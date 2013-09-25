@@ -156,7 +156,7 @@ def print_info(info):
     print("Available:      {0:>14}".format(human_readable(info['peak_available'])))
     print("Per day:        {0:>14}".format(human_readable(info['daily_peak_remaining'])))
     print("Today:          {0:>14}".format(human_readable(info['peak_usage'])))
-    print("Usage:          {0:.1%}".format(info['peak_usage_percentage']))
+    print("Usage:          {0:>14,.1%}".format(info['peak_usage_percentage']))
     print("========== Off-Peak ==========")
     print("Available:      {0:>14}".format(human_readable(info['off_peak_available'])))
     print("Today:          {0:>14}".format(human_readable(info['off_peak_usage'])))
@@ -195,11 +195,15 @@ def get_arguments():
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('--headless', help="Don't use the GUI", action='store_true')
     return parser.parse_args()
-     
-def main(headless=False):
-    if headless:
-        logger.info("Running headless")
 
+@rumps.timer(30)
+def reload_info(sender):
+    global app
+    info = get_info()
+    app.title = "{0:.1%}".format(info['peak_usage_percentage'])
+         
+def get_info():
+    global logger
     logger.info("Loading configuration")
     default = 'default'
     config_parser = ConfigParser.SafeConfigParser()
@@ -231,7 +235,7 @@ def main(headless=False):
                           "**********", 
                           msisdn, 
                           host))
-           
+
     headers = get_headers()
     logger.info("Logging in")
     (headers["Cookie"], auth_token) = log_in(host, auth_path, headers, username, password)
@@ -253,8 +257,19 @@ def main(headless=False):
             'peak_usage_percentage': peak_usage_percentage,
             'off_peak_available': off_peak_available,
             'off_peak_usage': off_peak_usage}
-    print_info(info)
     logger.info("Audit: {0}".format(get_audit(info)))
+    return info
+
+def main(headless=False):
+    global logger, app
+    if headless:
+        logger.info("Running headless")
+        info = get_info()           
+        print_info(info)
+    else:
+        timer = rumps.Timer(reload_info, 5)
+        app = rumps.App('Loading...')
+        app.run()
 
 if __name__ == "__main__":
     global logger
