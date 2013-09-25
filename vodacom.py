@@ -14,7 +14,6 @@
 # limitations under the License.
 
 # TODO:
-# logging
 # implement rumps
 
 # Local
@@ -25,6 +24,10 @@ import pprint
 import subprocess
 import datetime
 import calendar
+import logging.config
+import os.path
+import argparse
+import ConfigParser
 
 # Third-party
 import rumps
@@ -126,7 +129,7 @@ def get_available_data(json_data):
     Returns the available data as a tuple (peak_available, off_peak_available).
     """
     peak_available = sum(data_item['remaininginmetric'] 
-                          for data_item in json_data['dataTotalBean'])
+                         for data_item in json_data['dataTotalBean'])
     off_peak_available = sum([kb_from_human_readable(data_item['totalBundleRemaining'])
                               for data_item in
                               json_data['getBalancesOutDTO']['dataBalancesOutDTO'] 
@@ -149,43 +152,97 @@ def print_info(info):
     """
     Prints info to stdout.
     """
-    print('======= Peak =======')
-    print('Available: {0}'.format(human_readable(info['peak_available'])))
-    print('Per day: {0}'.format(human_readable(info['daily_peak_remaining'])))
-    print('Today: {0}'.format(human_readable(info['peak_usage'])))
-    print('Usage: {0:.1%}'.format(info['peak_usage_percentage']))
-    print('===== Off-Peak =====')
-    print('Available: {0}'.format(human_readable(info['off_peak_available'])))
-    print('Today: {0}'.format(human_readable(info['off_peak_usage'])))
-    print('====================')
+    print("============ Peak ============")
+    print("Available:      {0:>14}".format(human_readable(info['peak_available'])))
+    print("Per day:        {0:>14}".format(human_readable(info['daily_peak_remaining'])))
+    print("Today:          {0:>14}".format(human_readable(info['peak_usage'])))
+    print("Usage:          {0:.1%}".format(info['peak_usage_percentage']))
+    print("========== Off-Peak ==========")
+    print("Available:      {0:>14}".format(human_readable(info['off_peak_available'])))
+    print("Today:          {0:>14}".format(human_readable(info['off_peak_usage'])))
+    print("==============================")
                  
-if __name__ == "__main__":
-	# CONFIG =============================================================================        
+def get_audit(info):
+	"""
+	Prints output in a format that can be parsed from a log file.
+	Spec: <available_peak>,
+	      <per_day_peak_remaining>,
+	      <today_peak_usage>,
+	      <peak_usage_percentage>,
+	      <available_off_peak>,
+	      <today_off_peak_usage>
+	"""
+	return "{0},{1},{2},{3},{4},{5}".format(info['peak_available'],
+	                                        info['daily_peak_remaining'],
+	                                        info['peak_usage'],
+	                                        info['peak_usage_percentage'],
+	                                        info['off_peak_available'],
+	                                        info['off_peak_usage'])
+
+def get_logger(conf_path):
+    """
+    Initialise the logger from a config file.
+    """
+    logging.config.fileConfig(conf_path)
+    logger = logging.getLogger()
+    return logger
+    
+def get_arguments():
+    """
+    Create and return a command-line argument parser.
+    """
+    description = "Utility for compiling a data usage summary."
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('--headless', help="Don't use the GUI", action='store_true')
+    return parser.parse_args()
+     
+def main(headless=False):
+	if headless:
+		logger.info("Running headless")
+
+	logger.info("Loading configuration")
+	default = 'default'
+	config_parser = ConfigParser.SafeConfigParser()
+	config_file = open('{0}.conf'.format(os.path.splitext(os.path.basename(__file__))[0]))
+	config_parser.readfp(config_file)
 	# The username to log in with
-	username = '082xxxxxxx'
+	username = config_parser.get(default, 'username')
 	# The password for the username above
-	password = 'password'
+	password = config_parser.get(default, 'password')
 	# The MSISDN for which you require the balance
-	msisdn = '082xxxxxxx'
+	msisdn = config_parser.get(default, 'msisdn')
 	# The host name providing the REST API
-	host = 'www.vodacom.mobi'
+	host = config_parser.get(default, 'host')
 	# The resource for logging in
-	auth_path = '/coza_rest_5_0/auth'
+	auth_path = "/coza_rest_5_0/auth"
 	# The resource template where we'll get the balance information
-	info_path = '/coza_rest_5_0/postlogin/details?msisdn={0}&vodacomauth_token={1}&linkedmsisdn={2}'
+	info_path = ("/coza_rest_5_0/postlogin/details?msisdn={0}"
+	             "&vodacomauth_token={1}&linkedmsisdn={2}")
 	# The script to invoke to get hourly data usage from a monitor
 	# In this case, I'm have an internet gateway where data is monitored using vnstat.
 	# The data is retrieved over an SSH tunnel using SSH keys. 
 	usage_args = ["ssh", "192.168.0.1", "'./Scripts/get_today_hourly_usage.sh'"]
+	logger.debug(("Configuration:"
+	              "\n\tUsername: {0}"
+	              "\n\tPassword: {1}"
+	              "\n\tMSISDN:   {2}"
+	              "\n\tHost:     {3}")
+				  .format(username, 
+				          "**********", 
+				          msisdn, 
+				          host))
 		   
-	# COLLECT ============================================================================
 	headers = get_headers()
-	(headers['Cookie'], auth_token) = log_in(host, auth_path, headers, username, password)
+	logger.info("Logging in")
+	(headers["Cookie"], auth_token) = log_in(host, auth_path, headers, username, password)
 	info_path = info_path.format(username, auth_token, msisdn)
+	logger.info("Retrieving data balances from {0}".format(host))
 	json_data = get_data(host, info_path, headers)
+	logger.debug("\n{0}".format(pprint.pformat(json_data)))
+	logger.info("Retrieving data usage")
 	hourly_usage = get_hourly_usage(usage_args)
 
-	# OUTPUT =============================================================================
+	logger.info("Compiling summary")
 	today = datetime.date.today()
 	(peak_usage, off_peak_usage) = split_data_usage(hourly_usage, today)
 	(peak_available, off_peak_available) = get_available_data(json_data)
@@ -197,4 +254,13 @@ if __name__ == "__main__":
 			'off_peak_available': off_peak_available,
 			'off_peak_usage': off_peak_usage}
 	print_info(info)
+	logger.info("Audit: {0}".format(get_audit(info)))
 
+if __name__ == "__main__":
+	global logger
+	logger = get_logger("logger.conf")
+	try:
+		args = get_arguments()
+		main(headless=args.headless)
+	except Exception, e:
+		logger.exception(e)
