@@ -163,21 +163,21 @@ def print_info(info):
     print("==============================")
                  
 def get_audit(info):
-	"""
-	Prints output in a format that can be parsed from a log file.
-	Spec: <available_peak>,
-	      <per_day_peak_remaining>,
-	      <today_peak_usage>,
-	      <peak_usage_percentage>,
-	      <available_off_peak>,
-	      <today_off_peak_usage>
-	"""
-	return "{0},{1},{2},{3},{4},{5}".format(info['peak_available'],
-	                                        info['daily_peak_remaining'],
-	                                        info['peak_usage'],
-	                                        info['peak_usage_percentage'],
-	                                        info['off_peak_available'],
-	                                        info['off_peak_usage'])
+    """
+    Prints output in a format that can be parsed from a log file.
+    Spec: <available_peak>,
+          <per_day_peak_remaining>,
+          <today_peak_usage>,
+          <peak_usage_percentage>,
+          <available_off_peak>,
+          <today_off_peak_usage>
+    """
+    return "{0},{1},{2},{3},{4},{5}".format(info['peak_available'],
+                                            info['daily_peak_remaining'],
+                                            info['peak_usage'],
+                                            info['peak_usage_percentage'],
+                                            info['off_peak_available'],
+                                            info['off_peak_usage'])
 
 def get_logger(conf_path):
     """
@@ -197,70 +197,70 @@ def get_arguments():
     return parser.parse_args()
      
 def main(headless=False):
-	if headless:
-		logger.info("Running headless")
+    if headless:
+        logger.info("Running headless")
 
-	logger.info("Loading configuration")
-	default = 'default'
-	config_parser = ConfigParser.SafeConfigParser()
-	config_file = open('{0}.conf'.format(os.path.splitext(os.path.basename(__file__))[0]))
-	config_parser.readfp(config_file)
-	# The username to log in with
-	username = config_parser.get(default, 'username')
-	# The password for the username above
-	password = config_parser.get(default, 'password')
-	# The MSISDN for which you require the balance
-	msisdn = config_parser.get(default, 'msisdn')
-	# The host name providing the REST API
-	host = config_parser.get(default, 'host')
-	# The resource for logging in
-	auth_path = "/coza_rest_5_0/auth"
-	# The resource template where we'll get the balance information
-	info_path = ("/coza_rest_5_0/postlogin/details?msisdn={0}"
-	             "&vodacomauth_token={1}&linkedmsisdn={2}")
-	# The script to invoke to get hourly data usage from a monitor
-	# In this case, I'm have an internet gateway where data is monitored using vnstat.
-	# The data is retrieved over an SSH tunnel using SSH keys. 
-	usage_args = ["ssh", "192.168.0.1", "'./Scripts/get_today_hourly_usage.sh'"]
-	logger.debug(("Configuration:"
-	              "\n\tUsername: {0}"
-	              "\n\tPassword: {1}"
-	              "\n\tMSISDN:   {2}"
-	              "\n\tHost:     {3}")
-				  .format(username, 
-				          "**********", 
-				          msisdn, 
-				          host))
-		   
-	headers = get_headers()
-	logger.info("Logging in")
-	(headers["Cookie"], auth_token) = log_in(host, auth_path, headers, username, password)
-	info_path = info_path.format(username, auth_token, msisdn)
-	logger.info("Retrieving data balances from {0}".format(host))
-	json_data = get_data(host, info_path, headers)
-	logger.debug("\n{0}".format(pprint.pformat(json_data)))
-	logger.info("Retrieving data usage")
-	hourly_usage = get_hourly_usage(usage_args)
+    logger.info("Loading configuration")
+    default = 'default'
+    config_parser = ConfigParser.SafeConfigParser()
+    config_file = open('{0}.conf'.format(os.path.splitext(os.path.basename(__file__))[0]))
+    config_parser.readfp(config_file)
+    # The username to log in with
+    username = config_parser.get(default, 'username')
+    # The password for the username above
+    password = config_parser.get(default, 'password')
+    # The MSISDN for which you require the balance
+    msisdn = config_parser.get(default, 'msisdn')
+    # The host name providing the REST API
+    host = config_parser.get(default, 'host')
+    # The resource for logging in
+    auth_path = "/coza_rest_5_0/auth"
+    # The resource template where we'll get the balance information
+    info_path = ("/coza_rest_5_0/postlogin/details?msisdn={0}"
+                 "&vodacomauth_token={1}&linkedmsisdn={2}")
+    # The script to invoke to get hourly data usage from a monitor
+    # In this case, I'm have an internet gateway where data is monitored using vnstat.
+    # The data is retrieved over an SSH tunnel using SSH keys. 
+    usage_args = ["ssh", "192.168.0.1", "'./Scripts/get_today_hourly_usage.sh'"]
+    logger.debug(("Configuration:"
+                  "\n\tUsername: {0}"
+                  "\n\tPassword: {1}"
+                  "\n\tMSISDN:   {2}"
+                  "\n\tHost:     {3}")
+                  .format(username, 
+                          "**********", 
+                          msisdn, 
+                          host))
+           
+    headers = get_headers()
+    logger.info("Logging in")
+    (headers["Cookie"], auth_token) = log_in(host, auth_path, headers, username, password)
+    info_path = info_path.format(username, auth_token, msisdn)
+    logger.info("Retrieving data balances from {0}".format(host))
+    json_data = get_data(host, info_path, headers)
+    logger.debug("\n{0}".format(pprint.pformat(json_data)))
+    logger.info("Retrieving data usage")
+    hourly_usage = get_hourly_usage(usage_args)
 
-	logger.info("Compiling summary")
-	today = datetime.date.today()
-	(peak_usage, off_peak_usage) = split_data_usage(hourly_usage, today)
-	(peak_available, off_peak_available) = get_available_data(json_data)
-	(daily_peak_remaining, peak_usage_percentage) = calculate_daily_quota_and_usage(today, peak_available, peak_usage)
-	info = {'peak_available': peak_available,
-			'daily_peak_remaining': daily_peak_remaining,
-			'peak_usage': peak_usage,
-			'peak_usage_percentage': peak_usage_percentage,
-			'off_peak_available': off_peak_available,
-			'off_peak_usage': off_peak_usage}
-	print_info(info)
-	logger.info("Audit: {0}".format(get_audit(info)))
+    logger.info("Compiling summary")
+    today = datetime.date.today()
+    (peak_usage, off_peak_usage) = split_data_usage(hourly_usage, today)
+    (peak_available, off_peak_available) = get_available_data(json_data)
+    (daily_peak_remaining, peak_usage_percentage) = calculate_daily_quota_and_usage(today, peak_available, peak_usage)
+    info = {'peak_available': peak_available,
+            'daily_peak_remaining': daily_peak_remaining,
+            'peak_usage': peak_usage,
+            'peak_usage_percentage': peak_usage_percentage,
+            'off_peak_available': off_peak_available,
+            'off_peak_usage': off_peak_usage}
+    print_info(info)
+    logger.info("Audit: {0}".format(get_audit(info)))
 
 if __name__ == "__main__":
-	global logger
-	logger = get_logger("logger.conf")
-	try:
-		args = get_arguments()
-		main(headless=args.headless)
-	except Exception, e:
-		logger.exception(e)
+    global logger
+    logger = get_logger("logger.conf")
+    try:
+        args = get_arguments()
+        main(headless=args.headless)
+    except Exception, e:
+        logger.exception(e)
