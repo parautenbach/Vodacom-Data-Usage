@@ -14,20 +14,22 @@
 # limitations under the License.
 
 # TODO:
-# implement rumps
+# threading
+# py2app
 
 # Local
-import httplib
-import urllib
-import json
-import pprint
-import subprocess
-import datetime
+import argparse
 import calendar
+import ConfigParser
+import datetime
+import httplib
+import json
 import logging.config
 import os.path
-import argparse
-import ConfigParser
+import pprint
+import subprocess
+import threading
+import urllib
 
 # Third-party
 import rumps
@@ -148,20 +150,45 @@ def calculate_daily_quota_and_usage(today, available_data, current_usage):
     usage = current_usage/daily_remaining
     return (daily_remaining, usage)
 
-def print_info(info):
+def get_formatted_info(info):
     """
-    Prints info to stdout.
+    Returns a formatted info summary.
     """
-    print("============ Peak ============")
-    print("Available:      {0:>14}".format(human_readable(info['peak_available'])))
-    print("Per day:        {0:>14}".format(human_readable(info['daily_peak_remaining'])))
-    print("Today:          {0:>14}".format(human_readable(info['peak_usage'])))
-    print("Usage:          {0:>14,.1%}".format(info['peak_usage_percentage']))
-    print("========== Off-Peak ==========")
-    print("Available:      {0:>14}".format(human_readable(info['off_peak_available'])))
-    print("Today:          {0:>14}".format(human_readable(info['off_peak_usage'])))
-    print("==============================")
+    s = ("============ Peak ============\n"
+         "Available:      {0:>14}\n"
+         "Per day:        {1:>14}\n"
+         "Today:          {2:>14}\n"
+         "Usage:          {3:>14,.1%}\n"
+         "========== Off-Peak ==========\n"
+         "Available:      {4:>14}\n"
+         "Today:          {5:>14}\n"
+         "==============================").format(human_readable(info['peak_available']),
+                 human_readable(info['daily_peak_remaining']),
+                 human_readable(info['peak_usage']),
+                 info['peak_usage_percentage'],
+                 human_readable(info['off_peak_available']),
+                 human_readable(info['off_peak_usage']))
+    return s
                  
+def get_simple_formatted_info(info):
+    """
+    Returns a simple formatted info summary.
+    """
+    s = ("Peak\n"
+         "Available: {0}\n"
+         "Per day: {1}\n"
+         "Today: {2}\n"
+         "Usage:  {3:.1%}\n\n"
+         "Off-Peak\n"
+         "Available: {4}\n"
+         "Today: {5:}\n").format(human_readable(info['peak_available']),
+                 human_readable(info['daily_peak_remaining']),
+                 human_readable(info['peak_usage']),
+                 info['peak_usage_percentage'],
+                 human_readable(info['off_peak_available']),
+                 human_readable(info['off_peak_usage']))
+    return s
+    
 def get_audit(info):
     """
     Prints output in a format that can be parsed from a log file.
@@ -196,14 +223,48 @@ def get_arguments():
     parser.add_argument('--headless', help="Don't use the GUI", action='store_true')
     return parser.parse_args()
 
-@rumps.timer(30)
-def reload_info(sender):
-    global app
-    info = get_info()
-    app.title = "{0:.1%}".format(info['peak_usage_percentage'])
-         
-def get_info():
-    global logger
+@rumps.timer(5*60)
+def reload_info_callback(sender):
+    """
+    Timer callback for reloading all info.
+    """
+    # We don't use any locking, as we assume that the interval between runs will be less
+    # than the time to retrieve the data
+    #thread = threading.Thread(target=reload_info)
+    #thread.daemon = True
+    #thread.start()
+    reload_info()
+
+@rumps.clicked('Summary')
+def summary_callback(_):
+    global info
+    rumps.alert(get_simple_formatted_info(info))
+        
+@rumps.clicked('Refresh')
+def refresh_callback(_):
+    global info
+    info['last_update'] = None
+    reload_info_callback(None)
+    
+def reload_info():
+    """
+    Reload info and update the status bar.
+    """
+    global logger, app, info
+    old_title = app.title
+    app.title = "Updating..."
+    try:
+        update_info()
+        app.title = "{0:.1%}".format(info['peak_usage_percentage'])
+    except Exception, e:
+        logger.exception(e)
+        app.title = old_title
+            
+def update_info():
+    """
+    Returns a dictionary of all info.
+    """
+    global logger, info
     logger.info("Loading configuration")
     default = 'default'
     config_parser = ConfigParser.SafeConfigParser()
@@ -236,46 +297,59 @@ def get_info():
                           msisdn, 
                           host))
 
-    headers = get_headers()
-    logger.info("Logging in")
-    (headers["Cookie"], auth_token) = log_in(host, auth_path, headers, username, password)
-    info_path = info_path.format(username, auth_token, msisdn)
-    logger.info("Retrieving data balances from {0}".format(host))
-    json_data = get_data(host, info_path, headers)
-    logger.debug("\n{0}".format(pprint.pformat(json_data)))
+    # Update the last update timestamp to now
+    now = datetime.datetime.now()
+    last_update = info['last_update'] if info.has_key('last_update') else None
+    info['last_update'] = now
+
+    # Get remote info -- every hour, on the hour (or the first chance we get), or if
+    # it's the first time we're executing
+    if last_update is None or now.hour != last_update.hour:
+        headers = get_headers()
+        logger.info("Logging in")
+        (headers["Cookie"], auth_token) = log_in(host, auth_path, headers, username, password)
+        info_path = info_path.format(username, auth_token, msisdn)
+        logger.info("Retrieving data balances from {0}".format(host))
+        json_data = get_data(host, info_path, headers)
+        logger.debug("\n{0}".format(pprint.pformat(json_data)))
+        (info['peak_available'], info['off_peak_available']) = get_available_data(json_data)
+    else:
+        logger.info("Skipping remote retrieval")
+    
+    # Get local info and build summary
     logger.info("Retrieving data usage")
     hourly_usage = get_hourly_usage(usage_args)
-
     logger.info("Compiling summary")
     today = datetime.date.today()
-    (peak_usage, off_peak_usage) = split_data_usage(hourly_usage, today)
-    (peak_available, off_peak_available) = get_available_data(json_data)
-    (daily_peak_remaining, peak_usage_percentage) = calculate_daily_quota_and_usage(today, peak_available, peak_usage)
-    info = {'peak_available': peak_available,
-            'daily_peak_remaining': daily_peak_remaining,
-            'peak_usage': peak_usage,
-            'peak_usage_percentage': peak_usage_percentage,
-            'off_peak_available': off_peak_available,
-            'off_peak_usage': off_peak_usage}
+    (info['peak_usage'], info['off_peak_usage']) = split_data_usage(hourly_usage, today)
+    (info['daily_peak_remaining'], info['peak_usage_percentage']) = calculate_daily_quota_and_usage(today, info['peak_available'], info['peak_usage'])
     logger.info("Audit: {0}".format(get_audit(info)))
-    return info
 
 def main(headless=False):
-    global logger, app
+    """
+    Main method.
+    """
+    global logger, app, info
     if headless:
         logger.info("Running headless")
-        info = get_info()           
-        print_info(info)
+        update_info()           
+        print(get_formatted_info(info))
     else:
-        timer = rumps.Timer(reload_info, 5)
-        app = rumps.App('Loading...')
+        timer = rumps.Timer(reload_info_callback, 5)
+        app = rumps.App('Vodacom', menu=('Summary', 'Refresh', None))
         app.run()
 
 if __name__ == "__main__":
-    global logger
+    """
+    Main entry point.
+    """
     logger = get_logger("logger.conf")
+    info = {}
+    #from Foundation import NSAutoreleasePool
+    #pool = NSAutoreleasePool.alloc().init()
     try:
         args = get_arguments()
         main(headless=args.headless)
     except Exception, e:
         logger.exception(e)
+    #del pool
