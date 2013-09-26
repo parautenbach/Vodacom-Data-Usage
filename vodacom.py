@@ -16,6 +16,7 @@
 # TODO:
 # threading
 # py2app
+# toggle between percentage and usage
 
 # Local
 import argparse
@@ -255,7 +256,8 @@ def reload_info():
     app.title = "Updating..."
     try:
         update_info()
-        app.title = "{0:.1%}".format(info['peak_usage_percentage'])
+        app.title = "{0} / {1:.1%}".format(human_readable(info['peak_usage']),         
+                                           info['peak_usage_percentage'])
     except Exception, e:
         logger.exception(e)
         app.title = old_title
