@@ -16,9 +16,9 @@
 # TODO:
 # threading
 # py2app
-# toggle between percentage and usage
 # icon (dock/bar)
 # auto start
+# notifications (50%, 80%, 95%)
 
 # Local
 import argparse
@@ -362,7 +362,15 @@ def main(headless=False):
         print(get_console_formatted_info(info))
     else:
         timer = rumps.Timer(reload_info_callback, 5)
-        app = rumps.App('Vodacom', menu=('Summary', 'Refresh', None))
+        summary = rumps.MenuItem('Summary', 
+                                 icon='icons/summary_24x24.png', 
+                                 dimensions=(16, 16))
+        refresh = rumps.MenuItem('Refresh', 
+                                 icon='icons/refresh_24x24.png', 
+                                 dimensions=(16, 16))
+        app = rumps.App('Vodacom', 
+                        icon='icons/app_24x24.png',
+                        menu=(summary, refresh, None))
         app.run()
 
 if __name__ == "__main__":

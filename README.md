@@ -13,3 +13,6 @@ A Mac OS X menu bar status item to show your daily quota usage. It retrieves you
 
 # Errors
 Check the log file.
+
+# Credits
+Thank you to [dryicons](http://dryicons.com/) for the [Coquette Icon Set](http://dryicons.com/free-icons/preview/coquette-icons-set/).
