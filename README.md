@@ -7,5 +7,9 @@ A Mac OS X menu bar status item to show your daily quota usage. It retrieves you
 
 # Dependencies
 * Python 2.7 or newer
+* [Xcode Command-Line Tools](https://developer.apple.com/xcode/)
 * [rumps: Ridiculously Uncomplicated Mac OS X Python Statusbar apps](https://github.com/jaredks/rumps)
 * [vnstat](http://humdi.net/vnstat/)
+
+# Errors
+Check the log file.

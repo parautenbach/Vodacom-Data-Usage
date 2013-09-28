@@ -17,6 +17,8 @@
 # threading
 # py2app
 # toggle between percentage and usage
+# icon (dock/bar)
+# auto start
 
 # Local
 import argparse
@@ -151,7 +153,7 @@ def calculate_daily_quota_and_usage(today, available_data, current_usage):
     usage = current_usage/daily_remaining
     return (daily_remaining, usage)
 
-def get_formatted_info(info):
+def get_console_formatted_info(info):
     """
     Returns a formatted info summary.
     """
@@ -182,12 +184,14 @@ def get_simple_formatted_info(info):
          "Usage:  {3:.1%}\n\n"
          "Off-Peak\n"
          "Available: {4}\n"
-         "Today: {5:}\n").format(human_readable(info['peak_available']),
+         "Today: {5:}\n\n"
+         "Last Update: {6}").format(human_readable(info['peak_available']),
                  human_readable(info['daily_peak_remaining']),
                  human_readable(info['peak_usage']),
                  info['peak_usage_percentage'],
                  human_readable(info['off_peak_available']),
-                 human_readable(info['off_peak_usage']))
+                 human_readable(info['off_peak_usage']),
+                 info['last_update'].strftime('%x %X'))
     return s
     
 def get_audit(info):
@@ -239,13 +243,22 @@ def reload_info_callback(sender):
 @rumps.clicked('Summary')
 def summary_callback(_):
     global info
-    rumps.alert(get_simple_formatted_info(info))
+    if len(info) > 1:
+        rumps.alert(get_simple_formatted_info(info))
+    else:
+        msg = "No information available. Please refresh or wait until the next hour elapses."
+        rumps.alert(msg)
+        logger.warning(msg)
         
 @rumps.clicked('Refresh')
 def refresh_callback(_):
     global info
-    info['last_update'] = None
-    reload_info_callback(None)
+    try:
+        last_update = info['last_update']
+        info['last_update'] = None
+        reload_info_callback(None)
+    except Exception, e:
+        info['last_update'] = last_update
     
 def reload_info():
     """
@@ -256,11 +269,17 @@ def reload_info():
     app.title = "Updating..."
     try:
         update_info()
-        app.title = "{0} / {1:.1%}".format(human_readable(info['peak_usage']),         
-                                           info['peak_usage_percentage'])
+        if info.has_key('peak_usage') and info.has_key('peak_usage_percentage'):
+            app.title = "{0} ({1:.1%})".format(human_readable(info['peak_usage']),         
+                                               info['peak_usage_percentage'])
+        else:
+            app.title = "No Info"
     except Exception, e:
         logger.exception(e)
-        app.title = old_title
+        if app.title == "Updating...":
+            app.title = "No Info"
+        else:
+            app.title = old_title
             
 def update_info():
     """
@@ -306,10 +325,15 @@ def update_info():
 
     # Get remote info -- every hour, on the hour (or the first chance we get), or if
     # it's the first time we're executing
-    if last_update is None or now.hour != last_update.hour:
+    if (last_update is None or  # We've never updated
+        now.hour != last_update.hour or  # Or we've crossed an hour boundary
+        (now - last_update).total_seconds()/(60*60) > 1):  # Or we haven't updated in 1 hour
         headers = get_headers()
         logger.info("Logging in")
         (headers["Cookie"], auth_token) = log_in(host, auth_path, headers, username, password)
+        if auth_token is None:
+            logger.error("Not logged in -- check config")
+            return
         info_path = info_path.format(username, auth_token, msisdn)
         logger.info("Retrieving data balances from {0}".format(host))
         json_data = get_data(host, info_path, headers)
@@ -335,7 +359,7 @@ def main(headless=False):
     if headless:
         logger.info("Running headless")
         update_info()           
-        print(get_formatted_info(info))
+        print(get_console_formatted_info(info))
     else:
         timer = rumps.Timer(reload_info_callback, 5)
         app = rumps.App('Vodacom', menu=('Summary', 'Refresh', None))
