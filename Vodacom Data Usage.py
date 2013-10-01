@@ -289,7 +289,7 @@ def update_info():
     logger.info("Loading configuration")
     default = 'default'
     config_parser = ConfigParser.SafeConfigParser()
-    config_file = open('conf/{0}.conf'.format(os.path.splitext(os.path.basename(__file__))[0]))
+    config_file = open('{0}/conf/{1}.conf'.format(os.path.dirname(__file__), os.path.splitext(os.path.basename(__file__))[0]))
     config_parser.readfp(config_file)
     # The username to log in with
     username = config_parser.get(default, 'username')
@@ -377,7 +377,7 @@ if __name__ == "__main__":
     """
     Main entry point.
     """
-    logger = get_logger("conf/logger.conf")
+    logger = get_logger("{0}/conf/logger.conf".format(os.path.dirname(__file__)))
     info = {}
     #from Foundation import NSAutoreleasePool
     #pool = NSAutoreleasePool.alloc().init()
