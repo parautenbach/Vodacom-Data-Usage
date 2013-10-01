@@ -8,13 +8,25 @@ Usage:
 from setuptools import setup
 
 APP = ['Vodacom Data Usage.py']
-DATA_FILES =  ['icons', 
-               'conf', 
-               'logs']
+DATA_FILES =  [('icons', ['icons/app_24x24.png',
+                          'icons/app_128x128.icns',
+                          'icons/app_128x128.png',
+                          'icons/refresh_24x24.png',
+                          'icons/summary_24x24.png']),
+               ('conf', ['conf/Vodacom Data Usage.conf',
+                         'conf/logger.conf']),
+               ('logs', ['logs/Vodacom Data Usage.log']),
+               ('', ['README.md',
+                     'LICENSE'])]
 OPTIONS = {}
 
 setup(
     app=APP,
+    name='Vodacom Data Usage',
+    version='1.0.0',
+    description='Status Item app to monitor Vodacom data usage.',
+    author='Pieter Rautenbach',
+    url='http://www.whatsthatlight.com/',
     data_files=DATA_FILES,
     options={'py2app': OPTIONS},
     setup_requires=['py2app'],
