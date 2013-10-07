@@ -13,9 +13,12 @@ A Mac OS X menu bar status item to show your daily quota usage. It retrieves you
 
 # Installation
 * Download this code
-* Run `make.sh`
-* Run `install.sh` 
 * Install `scripts/get_today_hourly_usage.sh` on your internet gateway in `~/Scripts/get_today_hourly_usage.sh` for a user with SSH keys set up
+* Create directory and copy contents to `/usr/local/vodacom_data_usage/`
+* `chown -R root:wheel /usr/local/vodacom_data_usage/`
+* Copy the plist file to `/Library/LaunchAgents/`
+* `launchctl load -w /Library/LaunchAgents/com.whatsthatlight.VodacomDataUsage.plist`
+* `tail -f /var/log/Vodacom Data Usage.log`
 
 # Errors
 Check the log file.

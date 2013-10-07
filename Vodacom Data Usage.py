@@ -361,15 +361,16 @@ def main(headless=False):
         update_info()           
         print(get_console_formatted_info(info))
     else:
+        p = os.path.dirname(os.path.abspath(__file__))
         timer = rumps.Timer(reload_info_callback, 5)
         summary = rumps.MenuItem('Summary', 
-                                 icon='icons/summary_24x24.png', 
+                                 icon='{0}/icons/summary_24x24.png'.format(p), 
                                  dimensions=(16, 16))
         refresh = rumps.MenuItem('Refresh', 
-                                 icon='icons/refresh_24x24.png', 
+                                 icon='{0}/icons/refresh_24x24.png'.format(p), 
                                  dimensions=(16, 16))
         app = rumps.App('Vodacom', 
-                        icon='icons/app_24x24.png',
+                        icon='{0}/icons/app_24x24.png'.format(p),
                         menu=(summary, refresh, None))
         app.run()
 

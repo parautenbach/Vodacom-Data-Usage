@@ -20,7 +20,7 @@ DATA_FILES =  [('icons', ['icons/app_24x24.png',
                ('', ['README.md',
                      'LICENSE'])]
 OPTIONS = {
-    #'argv_emulation': True,
+    'argv_emulation': True,
     'plist': {
         'LSUIElement': True,
     },
