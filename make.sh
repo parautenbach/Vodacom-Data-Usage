@@ -1,3 +1,4 @@
 #!/bin/bash
 rm -rf build dist
-python setup.py py2app --iconfile icons/app_128x128.icns
+#arch -32 -arch i386 python setup.py py2app
+arch -32 python2.7 setup.py py2app

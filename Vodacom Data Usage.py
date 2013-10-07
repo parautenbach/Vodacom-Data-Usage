@@ -14,11 +14,11 @@
 # limitations under the License.
 
 # TODO:
-# threading
-# py2app
-# icon (dock/bar)
-# auto start
+# background updating
+# py2app (WIP, can't install)
+# auto start (plist, LaunchDaemon, post-install script)
 # notifications (50%, 80%, 95%)
+# update screen shot
 
 # Local
 import argparse
@@ -377,7 +377,9 @@ if __name__ == "__main__":
     """
     Main entry point.
     """
-    logger = get_logger("{0}/conf/logger.conf".format(os.path.dirname(__file__)))
+    p = os.path.dirname(os.path.abspath(__file__))
+    l = "{0}/conf/logger.conf".format(p)
+    logger = get_logger(l)
     info = {}
     #from Foundation import NSAutoreleasePool
     #pool = NSAutoreleasePool.alloc().init()

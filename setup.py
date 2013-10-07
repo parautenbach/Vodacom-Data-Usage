@@ -5,6 +5,7 @@ Usage:
     python setup.py py2app
 """
 
+import py2app
 from setuptools import setup
 
 APP = ['Vodacom Data Usage.py']
@@ -18,7 +19,14 @@ DATA_FILES =  [('icons', ['icons/app_24x24.png',
                ('logs', ['logs/Vodacom Data Usage.log']),
                ('', ['README.md',
                      'LICENSE'])]
-OPTIONS = {}
+OPTIONS = {
+    #'argv_emulation': True,
+    'plist': {
+        'LSUIElement': True,
+    },
+    'packages': ['rumps'], 
+    'iconfile': 'icons/app_128x128.icns'
+}
 
 setup(
     app=APP,
