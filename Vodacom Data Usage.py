@@ -299,6 +299,8 @@ def update_info():
     msisdn = config_parser.get(default, 'msisdn')
     # The host name providing the REST API
     host = config_parser.get(default, 'host')
+    # The monitor for local data usage
+    monitor = config_parser.get(default, 'monitor')
     # The resource for logging in
     auth_path = "/coza_rest_5_0/auth"
     # The resource template where we'll get the balance information
@@ -307,7 +309,7 @@ def update_info():
     # The script to invoke to get hourly data usage from a monitor
     # In this case, I'm have an internet gateway where data is monitored using vnstat.
     # The data is retrieved over an SSH tunnel using SSH keys. 
-    usage_args = ["ssh", "192.168.0.1", "'./Scripts/get_today_hourly_usage.sh'"]
+    usage_args = monitor.split()
     logger.debug(("Configuration:"
                   "\n\tUsername: {0}"
                   "\n\tPassword: {1}"
