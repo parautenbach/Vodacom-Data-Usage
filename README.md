@@ -11,6 +11,8 @@ A Mac OS X menu bar status item to show your daily quota usage. It retrieves you
 * [rumps: Ridiculously Uncomplicated Mac OS X Python Statusbar apps](https://github.com/jaredks/rumps)
 * [vnstat](http://humdi.net/vnstat/)
 
+NOTE: The original rumps repository is defective since the launch of Mac OS X Mavericks, so rather use [this](tail -f /var/log/Vodacom Data Usage.log) alternative. 
+
 # Installation
 * Download this code
 * Install `scripts/get_today_hourly_usage.sh` on your internet gateway in `~/Scripts/get_today_hourly_usage.sh` for a user with SSH keys set up (this is the default, but you can configure it to execute locally; check the monitor setting in the configuration file)
