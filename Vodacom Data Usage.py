@@ -68,7 +68,7 @@ def get_headers():
     """
     A standard set of headers we'll use for all requests.
     """
-    return {'User-Agent': 'myvodacom/3.0.1 CFNetwork/609.1.4 Darwin/13.0.0',
+    return {'User-Agent': 'myvodacom/331 CFNetwork/672.1.15 Darwin/14.0.0',
             'Content-Type': 'application/x-www-form-urlencoded', 
             'Accept': 'application/json',
             'Accept-Language': 'en-gb',
@@ -302,7 +302,7 @@ def update_info():
     # The monitor for local data usage
     monitor = config_parser.get(default, 'monitor')
     # The resource for logging in
-    auth_path = "/coza_rest_5_0/auth"
+    auth_path = "/coza_rest_10_0/basicauth"
     # The resource template where we'll get the balance information
     info_path = ("/coza_rest_5_0/postlogin/details?msisdn={0}"
                  "&vodacomauth_token={1}&linkedmsisdn={2}")
