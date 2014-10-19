@@ -37,6 +37,9 @@ import urllib
 # Third-party
 import rumps
 
+# Constants
+USER_AGENT = 'myvodacom/333 CFNetwork/672.1.15 Darwin/14.0.0'
+
 def human_readable(kb):
     """
     Returns an input value in KB in the smallest unit with a value larger than one as a 
@@ -68,7 +71,7 @@ def get_headers():
     """
     A standard set of headers we'll use for all requests.
     """
-    return {'User-Agent': 'myvodacom/331 CFNetwork/672.1.15 Darwin/14.0.0',
+    return {'User-Agent': USER_AGENT,
             'Content-Type': 'application/x-www-form-urlencoded', 
             'Accept': 'application/json',
             'Accept-Language': 'en-gb',
@@ -83,6 +86,8 @@ def log_in(host, resource, headers, username, password):
     connection = httplib.HTTPSConnection(host)
     connection.request('POST', resource, parameters, headers)
     response = connection.getresponse()
+    json_data = json.load(response)
+    logger.debug("\n{0}".format(pprint.pformat(json_data)))
     cookie = response.getheader('Set-Cookie')
     auth_token = response.getheader('VodacomAuth-Token')
     connection.close()
@@ -133,12 +138,14 @@ def get_available_data(json_data):
     """
     Returns the available data as a tuple (peak_available, off_peak_available).
     """
-    peak_available = sum(data_item['remaininginmetric'] 
-                         for data_item in json_data['dataTotalBean'])
-    off_peak_available = sum([kb_from_human_readable(data_item['totalBundleRemaining'])
-                              for data_item in
-                              json_data['getBalancesOutDTO']['dataBalancesOutDTO'] 
-                              if data_item['serviceTypeString'].startswith('Night Owl')])
+    peak_available = sum(data_item['remaininginmetric'] for data_item in json_data['dataTotalBean'])
+    logger.debug('Peak available: {0}'.format(peak_available))
+    balances_detail = json_data['dataBalancesOutDTO']
+    # logger.debug(pprint.pformat(balances_detail))
+    off_peak_balances = [data_item for data_item in balances_detail if data_item['serviceTypeString'].startswith('Night Owl')]
+    # logger.debug(pprint.pformat(off_peak_balances))
+    off_peak_available = sum([data_item['remaininginmetric'] for data_item in off_peak_balances[0]['dataBalancesBean']])
+    logger.debug('Off-peak available: {0}'.format(off_peak_available))
     return (peak_available, off_peak_available)
             
 def calculate_daily_quota_and_usage(today, available_data, current_usage):
@@ -304,8 +311,7 @@ def update_info():
     # The resource for logging in
     auth_path = "/coza_rest_10_0/basicauth"
     # The resource template where we'll get the balance information
-    info_path = ("/coza_rest_5_0/postlogin/details?msisdn={0}"
-                 "&vodacomauth_token={1}&linkedmsisdn={2}")
+    info_path = ("/coza_rest_10_0/balances?msisdn={0}&token={1}&linkedmsisdn={2}")
     # The script to invoke to get hourly data usage from a monitor
     # In this case, I'm have an internet gateway where data is monitored using vnstat.
     # The data is retrieved over an SSH tunnel using SSH keys. 
