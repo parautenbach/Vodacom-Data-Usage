@@ -16,7 +16,6 @@ DATA_FILES =  [('icons', ['icons/app_24x24.png',
                           'icons/summary_24x24.png']),
                ('conf', ['conf/Vodacom Data Usage.conf',
                          'conf/logger.conf']),
-               ('logs', ['logs/Vodacom Data Usage.log']),
                ('', ['README.md',
                      'LICENSE'])]
 OPTIONS = {
