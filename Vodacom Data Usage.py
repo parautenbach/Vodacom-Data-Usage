@@ -124,10 +124,10 @@ def split_data_usage(hourly_usage, today):
     for l in lines:
         # See man vnstat for its output's format
         items = l.split(';')
-        t = datetime.datetime.fromtimestamp(int(items[2]))
+        t = datetime.datetime.fromtimestamp(long(items[2]))
         if today.day == t.day:
             # The sum of rx and tx data for this hour interval
-            delta = int(items[3]) + int(items[4])
+            delta = long(items[3]) + long(items[4])
             if t.hour >= 5:
                 peak_usage += delta
             else:
