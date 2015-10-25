@@ -157,7 +157,10 @@ def calculate_daily_quota_and_usage(today, available_data, current_usage):
     end_of_month = datetime.date(today.year, today.month, days_in_month)
     days_remaining = (end_of_month - today).days + 1
     daily_remaining = available_data/float(days_remaining)
-    usage = current_usage/daily_remaining
+    if daily_remaining:
+        usage = current_usage/daily_remaining
+    else:
+        usage = 0
     return (daily_remaining, usage)
 
 def get_console_formatted_info(info):
